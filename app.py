@@ -14,7 +14,7 @@ import os
 app = Flask(__name__)
 
 
-co = cohere.Client(os.getenv('COHERE_API_KEY'))
+co = cohere.Client(api_key=os.getenv('COHERE_API_KEY'))
 
 def is_valid_url(url):
     try:
