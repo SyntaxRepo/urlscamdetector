@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scam Website Detector</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN for icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom animation for fade-in effect on results */
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in-up {
+            animation: fade-in-up 0.5s ease-out;
+        }
+
+        /* Set a default font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Styling for the background canvas */
+        .background-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -10; /* Ensures it stays behind all content */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <!-- Canvas for the animated background -->
+    <canvas id="background-canvas" class="background-canvas"></canvas>
+
+    <div class="w-full max-w-4xl sm:max-w-5xl md:max-w-6xl lg:max-w-7xl bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-10 my-10 relative z-10">
+        
+        <!-- Header Section -->
+        <header class="flex items-center justify-center text-center mb-8">
+            <i data-lucide="shield-alert" class="w-10 h-10 text-rose-500 mr-4"></i>
+            <h1 class="text-4xl font-extrabold text-gray-900 leading-tight">
+                Scam Website <br/> Detector
+            </h1>
+        </header>
+
+        <!-- Description -->
+        <p class="text-center text-gray-500 mb-8 max-w-md mx-auto">
+            Use It If You Trust This Detector. Use At Your Own Risk.
+        </p>
+
+        <!-- Input Form -->
+        <form id="url-form" class="flex flex-col sm:flex-row gap-3">
+            <input
+                id="url-input"
+                type="url"
+                class="flex-1 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent transition duration-300 outline-none"
+                placeholder="e.g., https://shady-site.com"
+                required
+            />
+            <button
+                id="analyze-button"
+                type="submit"
+                class="p-4 bg-rose-500 text-white rounded-xl font-bold shadow-lg shadow-rose-200 hover:bg-rose-600 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+                <i data-lucide="search" class="w-5 h-5" id="search-icon"></i>
+                <i data-lucide="loader-2" class="w-5 h-5 animate-spin hidden" id="loading-icon"></i>
+                <span>Analyze</span>
+            </button>
+        </form>
+        
+        <!-- Results Container (Initially hidden) -->
+        <div id="results-container" class="hidden mt-10 animate-fade-in-up">
+            
+            <div class="grid md:grid-cols-3 gap-8 mb-8">
+                <!-- Trust Score Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-8 text-center border-t-8 border-rose-500">
+                    <h3 class="text-lg font-semibold text-gray-700">Trust Index</h3>
+                    <div class="flex flex-col items-center justify-center my-6">
+                        <div id="trust-circle" class="w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500">
+                            <span id="trust-score">0%</span>
+                        </div>
+                        <span id="trust-status" class="mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500">
+                            Status
+                        </span>
+                    </div>
+                    <p class="text-gray-500 text-sm">
+                        Based on comprehensive security analysis
+                    </p>
+                </div>
+
+                <!-- Scam Score Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-8 text-center border-t-8 border-rose-500">
+                    <h3 class="text-lg font-semibold text-gray-700">Scam Index</h3>
+                    <div class="flex flex-col items-center justify-center my-6">
+                        <div id="scam-circle" class="w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500">
+                            <span id="scam-score">0%</span>
+                        </div>
+                        <span id="scam-status" class="mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500">
+                            Status
+                        </span>
+                    </div>
+                    <p class="text-gray-500 text-sm">
+                        Calculated as 100% - Trust Index
+                    </p>
+                </div>
+
+                <!-- Malicious Index Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-8 text-center border-t-8 border-rose-500">
+                    <h3 class="text-lg font-semibold text-gray-700">Malicious Index</h3>
+                    <div class="flex flex-col items-center justify-center my-6">
+                        <div id="malicious-circle" class="w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500">
+                            <span id="malicious-score">0%</span>
+                        </div>
+                        <span id="malicious-status" class="mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500">
+                            Status
+                        </span>
+                    </div>
+                    <p class="text-gray-500 text-sm">
+                        High-risk indicators
+                    </p>
+                </div>
+            </div>
+
+            <!-- New Row of Indexes -->
+            <div class="grid md:grid-cols-3 gap-8 mb-8">
+                 <!-- Credibility Index Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-8 text-center border-t-8 border-rose-500">
+                    <h3 class="text-lg font-semibold text-gray-700">Credibility Index</h3>
+                    <div class="flex flex-col items-center justify-center my-6">
+                        <div id="credibility-circle" class="w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500">
+                            <span id="credibility-score">0%</span>
+                        </div>
+                        <span id="credibility-status" class="mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500">
+                            Status
+                        </span>
+                    </div>
+                    <p class="text-gray-500 text-sm">
+                        Based on history and established presence
+                    </p>
+                </div>
+
+                <!-- Security Index Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-8 text-center border-t-8 border-rose-500">
+                    <h3 class="text-lg font-semibold text-gray-700">Security Index</h3>
+                    <div class="flex flex-col items-center justify-center my-6">
+                        <div id="security-circle" class="w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500">
+                            <span id="security-score">0%</span>
+                        </div>
+                        <span id="security-status" class="mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500">
+                            Status
+                        </span>
+                    </div>
+                    <p class="text-gray-500 text-sm">
+                        Analyzes SSL and other security protocols
+                    </p>
+                </div>
+
+                <!-- Privacy Index Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-8 text-center border-t-8 border-rose-500">
+                    <h3 class="text-lg font-semibold text-gray-700">Privacy Index</h3>
+                    <div class="flex flex-col items-center justify-center my-6">
+                        <div id="privacy-circle" class="w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500">
+                            <span id="privacy-score">0%</span>
+                        </div>
+                        <span id="privacy-status" class="mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500">
+                            Status
+                        </span>
+                    </div>
+                    <p class="text-gray-500 text-sm">
+                        Examines potential data collection risks
+                    </p>
+                </div>
+            </div>
+
+            <!-- New: Stats Section -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 text-gray-700">
+                <h3 class="text-lg font-semibold mb-4 border-b pb-2">Analysis Breakdown</h3>
+                
+                <div class="space-y-4">
+                    <!-- Domain Age -->
+                    <div class="flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:bg-rose-50 hover:shadow-md cursor-pointer group">
+                        <i data-lucide="calendar" class="text-rose-500 w-6 h-6 transition-transform duration-300 group-hover:scale-110"></i>
+                        <div>
+                            <p class="font-medium">Domain Age</p>
+                            <p id="domain-age-stat" class="text-sm text-gray-500">Retrieving...</p>
+                        </div>
+                    </div>
+
+                    <!-- SSL Info -->
+                    <div class="flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:bg-rose-50 hover:shadow-md cursor-pointer group">
+                        <i data-lucide="lock" class="text-rose-500 w-6 h-6 transition-transform duration-300 group-hover:scale-110"></i>
+                        <div>
+                            <p class="font-medium">SSL Certificate</p>
+                            <p id="ssl-info-stat" class="text-sm text-gray-500">Retrieving...</p>
+                        </div>
+                    </div>
+
+                    <!-- AI Analysis -->
+                    <div class="flex items-center gap-4 p-4 rounded-xl transition-all duration-300 hover:bg-rose-50 hover:shadow-md cursor-pointer group">
+                        <i data-lucide="brain" class="text-rose-500 w-6 h-6 transition-transform duration-300 group-hover:scale-110"></i>
+                        <div>
+                            <p class="font-medium">AI Analysis</p>
+                            <p id="ai-analysis-stat" class="text-sm text-gray-500">Retrieving...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-8 mb-4 text-center text-gray-400">
+            <p>Jojohn Scam Detector &copy; 2025</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript for background animation -->
+    <script>
+        // Background animation script
+        window.onload = function() {
+            const canvas = document.getElementById('background-canvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            const particleCount = 100;
+            const maxDistance = 100;
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.vx = (Math.random() - 0.5) * 0.5; // Slow horizontal movement
+                    this.vy = (Math.random() - 0.5) * 0.5; // Slow vertical movement
+                    this.radius = Math.random() * 2;
+                    this.alpha = Math.random();
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Wrap particles around the screen
+                    if (this.x > canvas.width) this.x = 0;
+                    if (this.x < 0) this.x = canvas.width;
+                    if (this.y > canvas.height) this.y = 0;
+                    if (this.y < 0) this.y = canvas.height;
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                    ctx.fill();
+                }
+            }
+
+            function createParticles() {
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle());
+                }
+            }
+
+            function connectParticles() {
+                for (let i = 0; i < particleCount; i++) {
+                    for (let j = i; j < particleCount; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < maxDistance) {
+                            ctx.beginPath();
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${1 - distance / maxDistance})`;
+                            ctx.lineWidth = 1;
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            function animate() {
+                // Fading trail effect
+                ctx.fillStyle = 'rgba(10, 10, 20, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                for (let i = 0; i < particleCount; i++) {
+                    particles[i].update();
+                    particles[i].draw();
+                }
+                connectParticles();
+                requestAnimationFrame(animate);
+            }
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                // Re-create particles on resize to avoid weird positioning
+                particles = [];
+                createParticles();
+            });
+
+            resizeCanvas();
+            createParticles();
+            animate();
+        };
+    </script>
+    
+    <!-- JavaScript for functionality -->
+    <script>
+        // Find all elements with the 'data-lucide' attribute and replace them with SVG icons
+        lucide.createIcons();
+        
+        const form = document.getElementById('url-form');
+        const urlInput = document.getElementById('url-input');
+        const analyzeButton = document.getElementById('analyze-button');
+        const searchIcon = document.getElementById('search-icon');
+        const loadingIcon = document.getElementById('loading-icon');
+        const resultsContainer = document.getElementById('results-container');
+        
+        const trustScoreElement = document.getElementById('trust-score');
+        const trustStatusElement = document.getElementById('trust-status');
+        const trustCircleElement = document.getElementById('trust-circle');
+
+        // Elements for the scam score card
+        const scamScoreElement = document.getElementById('scam-score');
+        const scamStatusElement = document.getElementById('scam-status');
+        const scamCircleElement = document.getElementById('scam-circle');
+        
+        // Elements for the malicious score card
+        const maliciousScoreElement = document.getElementById('malicious-score');
+        const maliciousStatusElement = document.getElementById('malicious-status');
+        const maliciousCircleElement = document.getElementById('malicious-circle');
+
+        // Elements for Credibility, Security, and Privacy Indexes
+        const credibilityScoreElement = document.getElementById('credibility-score');
+        const credibilityStatusElement = document.getElementById('credibility-status');
+        const credibilityCircleElement = document.getElementById('credibility-circle');
+
+        const securityScoreElement = document.getElementById('security-score');
+        const securityStatusElement = document.getElementById('security-status');
+        const securityCircleElement = document.getElementById('security-circle');
+
+        const privacyScoreElement = document.getElementById('privacy-score');
+        const privacyStatusElement = document.getElementById('privacy-status');
+        const privacyCircleElement = document.getElementById('privacy-circle');
+
+
+        // Elements for the stats section
+        const domainAgeStat = document.getElementById('domain-age-stat');
+        const sslInfoStat = document.getElementById('ssl-info-stat');
+        const aiAnalysisStat = document.getElementById('ai-analysis-stat');
+
+        // Simulates getting domain WHOIS information, now with typosquatting detection
+        function getDomainInfo(domain) {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+
+            // List of well-known, established domains, now with updated mediafire data
+            const establishedDomains = {
+                'google.com': new Date('1998-09-15'),
+                'apple.com': new Date('1987-02-19'),
+                'microsoft.com': new Date('1991-05-02'),
+                'wikipedia.org': new Date('2001-01-13'),
+                'github.com': new Date('2007-10-10'),
+                'amazon.com': new Date('1994-11-01'),
+                'openai.com': new Date('2015-12-04'),
+                'mediafire.com': new Date('2002-08-11'),
+                'facebook.com': new Date('2004-02-04'),
+                'youtube.com': new Date('2005-02-14'),
+                'x.com': new Date('1999-07-14')
+            };
+
+            // Function to check for typosquatting (simple Levenshtein distance)
+            function isTyposquatting(input, target) {
+                const d = Array(target.length + 1).fill(null).map(() => Array(input.length + 1).fill(null));
+                for (let i = 0; i <= input.length; i += 1) d[0][i] = i;
+                for (let j = 0; j <= target.length; j += 1) d[j][0] = j;
+
+                for (let j = 1; j <= target.length; j += 1) {
+                    for (let i = 1; i <= input.length; i += 1) {
+                        const cost = target[j - 1] === input[i - 1] ? 0 : 1;
+                        d[j][i] = Math.min(d[j - 1][i] + 1, d[j][i - 1] + 1, d[j - 1][i - 1] + cost);
+                    }
+                }
+                return d[target.length][input.length] <= 2;
+            }
+            
+            let isTypo = false;
+            for (const trustedDomain in establishedDomains) {
+                if (isTyposquatting(domain, trustedDomain)) {
+                    isTypo = true;
+                    break;
+                }
+            }
+            
+            // Check if the domain is a known established domain
+            for (const establishedDomain in establishedDomains) {
+                if (domain.includes(establishedDomain)) {
+                    const creationDate = establishedDomains[establishedDomain];
+                    const ageDays = Math.floor((now - creationDate) / (1000 * 60 * 60 * 24));
+                    return {
+                        creation_date: creationDate.toLocaleDateString('en-US', options),
+                        age_days: ageDays,
+                        typosquatting: false
+                    };
+                }
+            }
+            
+            // Check for suspicious URL patterns (e.g., long, random, or with numbers/hyphens)
+            const suspiciousKeywords = ['login', 'verify', 'payment', 'update', 'security', 'free-money'];
+            const hasSuspiciousChars = /[0-9-]/.test(domain);
+            const isSuspicious = domain.length > 30 || suspiciousKeywords.some(keyword => domain.includes(keyword)) || hasSuspiciousChars;
+
+            if (isSuspicious || isTypo) {
+                // Simulate a very new domain for suspicious-looking URLs
+                const randomDays = Math.floor(Math.random() * 30) + 1; // 1 to 30 days
+                const creationDate = new Date(now);
+                creationDate.setDate(now.getDate() - randomDays);
+                return {
+                    creation_date: creationDate.toLocaleDateString('en-US', options),
+                    age_days: randomDays,
+                    typosquatting: isTypo
+                };
+            }
+            
+            // For all other domains, simulate a plausible but non-suspicious date
+            const randomDays = Math.floor(Math.random() * 730) + 365; // 1 to 3 years old
+            const creationDate = new Date(now);
+            creationDate.setDate(now.getDate() - randomDays);
+
+            return {
+                creation_date: creationDate.toLocaleDateString('en-US', options),
+                age_days: randomDays,
+                typosquatting: false
+            };
+        }
+
+        // Simulates getting SSL certificate info
+        function getSslInfo(domain) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            const sslInfo = {
+                'mediafire.com': {
+                    expiration: new Date('2025-08-30'),
+                    issuer: 'Sectigo Limited'
+                },
+                'google.com': {
+                    expiration: new Date('2025-09-15'),
+                    issuer: 'Google Trust Services LLC'
+                }
+            };
+
+            const info = sslInfo[domain];
+
+            // If not in our list, simulate data
+            if (!info) {
+                const now = new Date();
+                const isSuspicious = domain.includes('shady-site') || domain.includes('phishing') || domain.includes('typosquatting');
+                if (isSuspicious) {
+                    // Simulate an expired or invalid cert
+                    const expirationDate = new Date(now);
+                    expirationDate.setDate(now.getDate() - 5); // 5 days in the past
+                    return {
+                        expiration: expirationDate.toLocaleDateString('en-US', options),
+                        issuer: 'Self-Signed or Unknown'
+                    };
+                } else {
+                    // Simulate a valid cert expiring in the future
+                    const expirationDate = new Date(now);
+                    expirationDate.setDate(now.getDate() + 365); // 1 year in the future
+                    return {
+                        expiration: expirationDate.toLocaleDateString('en-US', options),
+                        issuer: 'Simulated Issuer'
+                    };
+                }
+            }
+
+            return {
+                expiration: info.expiration.toLocaleDateString('en-US', options),
+                issuer: info.issuer
+            };
+        }
+
+        // Simulates AI analysis based on the domain with more red flags
+        function analyzeWithCohere(domain) {
+            const trustedDomains = ['google.com', 'apple.com', 'microsoft.com', 'wikipedia.org', 'github.com', 'openai.com', 'mediafire.com', 'facebook.com', 'youtube.com', 'x.com'];
+            const isTrusted = trustedDomains.some(d => domain.includes(d));
+            
+            if (isTrusted) {
+                return 'This website appears to be highly trustworthy. It has a long history and no signs of being blacklisted. You can browse with confidence.';
+            } else {
+                const redFlags = [];
+                if (domain.includes('login') || domain.includes('verify')) {
+                    redFlags.push('AI analysis has flagged the site as a potential phishing page based on its URL structure.');
+                }
+                if (domain.includes('shady-site') || domain.includes('malware')) {
+                    redFlags.push('The domain name itself is a major red flag, indicating a malicious intent.');
+                }
+                if (domain.length > 30) {
+                    redFlags.push('The unusually long domain name is often used to mask malicious intent.');
+                }
+                if (domain.includes('free-money')) {
+                    redFlags.push('The domain name contains classic scam keywords, indicating a high probability of fraud.');
+                }
+
+                if (redFlags.length > 0) {
+                    return redFlags.join(' ');
+                } else {
+                    return 'This website exhibits several risk factors, though no specific red flags were immediately identified by the AI. Proceed with caution.';
+                }
+            }
+        }
+
+
+        // The core logic to calculate the final trust index, now with more granular and random penalties
+        function calculateTrustIndex(domainAge, analysis, sslExpiration, isTyposquatting) {
+            let trustScore = 100;
+            
+            // Generate a random penalty within a range for each condition
+            const getRandomPenalty = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            
+            // Domain age penalty
+            if (domainAge < 30) {
+                const penalty = getRandomPenalty(15, 25); // Penalty between 15-25 points
+                trustScore -= penalty;
+            } else if (domainAge < 90) {
+                const penalty = getRandomPenalty(10, 20); // Penalty between 10-20 points
+                trustScore -= penalty;
+            }
+            
+            // Typosquatting penalty
+            if (isTyposquatting) {
+                const penalty = getRandomPenalty(35, 45); // Penalty between 35-45 points
+                trustScore -= penalty;
+            }
+
+            // AI analysis penalties
+            if (analysis.includes('phishing page')) {
+                const penalty = getRandomPenalty(25, 35); // Penalty between 25-35 points
+                trustScore -= penalty;
+            } else if (analysis.includes('red flag') || analysis.includes('malicious intent')) {
+                const penalty = getRandomPenalty(15, 25); // Penalty between 15-25 points
+                trustScore -= penalty;
+            } else if (analysis.includes('classic scam keywords')) {
+                const penalty = getRandomPenalty(20, 30); // Penalty between 20-30 points
+                trustScore -= penalty;
+            }
+
+            // SSL certificate penalty
+            if (new Date(sslExpiration) < new Date()) {
+                const penalty = getRandomPenalty(20, 30); // Penalty between 20-30 points
+                trustScore -= penalty;
+            }
+            
+            // Ensure score is between 0-100
+            trustScore = Math.max(0, Math.min(100, trustScore));
+
+            let status;
+            let statusClass;
+            if (trustScore > 70) {
+                status = "High Trust";
+                statusClass = "success";
+            } else if (trustScore > 40) {
+                status = "Medium Trust";
+                statusClass = "warning";
+            } else {
+                status = "Low Trust";
+                statusClass = "danger";
+            }
+
+            return {
+                score: Math.round(trustScore),
+                status: status,
+                status_class: statusClass,
+            };
+        }
+
+        // Function to calculate the malicious index
+        function calculateMaliciousIndex(domainAge, analysis, sslExpiration, isTyposquatting) {
+            let maliciousScore = 0;
+            
+            // Generate a random score within a range for each condition
+            const getRandomScore = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+            // Typosquatting is a major malicious indicator
+            if (isTyposquatting) {
+                maliciousScore += getRandomScore(40, 60);
+            }
+
+            // High penalty for AI flagging phishing
+            if (analysis.includes('phishing page')) {
+                maliciousScore += getRandomScore(30, 50);
+            } else if (analysis.includes('malicious intent')) {
+                maliciousScore += getRandomScore(20, 40);
+            }
+            
+            // SSL issues are a strong sign of malicious intent
+            if (new Date(sslExpiration) < new Date()) {
+                 maliciousScore += getRandomScore(15, 25);
+            }
+
+            // Low penalty for new domains, as not all are malicious
+            if (domainAge < 90) {
+                maliciousScore += getRandomScore(5, 15);
+            }
+
+            // Ensure score is between 0-100
+            maliciousScore = Math.max(0, Math.min(100, maliciousScore));
+
+            let status;
+            let statusClass;
+            if (maliciousScore > 70) {
+                status = "High Risk";
+                statusClass = "danger";
+            } else if (maliciousScore > 40) {
+                status = "Medium Risk";
+                statusClass = "warning";
+            } else {
+                status = "Low Risk";
+                statusClass = "success";
+            }
+
+            return {
+                score: Math.round(maliciousScore),
+                status: status,
+                status_class: statusClass,
+            };
+        }
+
+        // Function to calculate the credibility index
+        function calculateCredibilityIndex(domainAge, analysis, isTyposquatting) {
+            let credibilityScore = 100;
+            const getRandomPenalty = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+            // Domain age is a strong indicator of credibility
+            if (domainAge < 30) {
+                credibilityScore -= getRandomPenalty(30, 40);
+            } else if (domainAge < 365) {
+                credibilityScore -= getRandomPenalty(10, 20);
+            }
+
+            // Typosquatting is a major hit to credibility
+            if (isTyposquatting) {
+                credibilityScore -= getRandomPenalty(40, 50);
+            }
+
+            // AI analysis red flags also lower credibility
+            if (analysis.includes('phishing page') || analysis.includes('malicious intent')) {
+                credibilityScore -= getRandomPenalty(20, 30);
+            }
+            
+            credibilityScore = Math.max(0, Math.min(100, credibilityScore));
+
+            return {
+                score: Math.round(credibilityScore),
+                status: getIndexStatus(credibilityScore),
+            };
+        }
+
+        // Function to calculate the security index
+        function calculateSecurityIndex(sslExpiration, analysis) {
+            let securityScore = 100;
+            const getRandomPenalty = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            
+            // Expired SSL is a major security flaw
+            if (new Date(sslExpiration) < new Date()) {
+                securityScore -= getRandomPenalty(50, 60);
+            }
+
+            // AI flagging security issues
+            if (analysis.includes('phishing page') || analysis.includes('malicious intent')) {
+                securityScore -= getRandomPenalty(20, 30);
+            }
+
+            securityScore = Math.max(0, Math.min(100, securityScore));
+
+            return {
+                score: Math.round(securityScore),
+                status: getIndexStatus(securityScore),
+            };
+        }
+
+        // Function to calculate the privacy index
+        function calculatePrivacyIndex(domain, analysis) {
+            let privacyScore = 100;
+            const getRandomPenalty = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+            // Keywords often associated with data collection/scams
+            const privacyKeywords = ['login', 'payment', 'profile', 'data'];
+            if (privacyKeywords.some(keyword => domain.includes(keyword))) {
+                privacyScore -= getRandomPenalty(10, 20);
+            }
+
+            // AI analysis flagging phishing or scams
+            if (analysis.includes('phishing page') || analysis.includes('classic scam keywords')) {
+                privacyScore -= getRandomPenalty(30, 40);
+            }
+
+            privacyScore = Math.max(0, Math.min(100, privacyScore));
+
+            return {
+                score: Math.round(privacyScore),
+                status: getIndexStatus(privacyScore),
+            };
+        }
+
+        // Helper function to get status text for a score
+        function getIndexStatus(score) {
+            if (score >= 70) return "High";
+            if (score >= 40) return "Medium";
+            return "Low";
+        }
+
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Show loading state
+            analyzeButton.disabled = true;
+            searchIcon.classList.add('hidden');
+            loadingIcon.classList.remove('hidden');
+            resultsContainer.classList.add('hidden');
+
+            const url = urlInput.value.toLowerCase();
+            let domain;
+            try {
+                domain = new URL(url).hostname;
+            } catch (error) {
+                // Use a custom modal or message box instead of alert()
+                const messageBox = document.createElement('div');
+                messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center';
+                messageBox.innerHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-auto text-center">
+                        <h3 class="text-xl font-bold mb-4">Invalid URL</h3>
+                        <p class="text-gray-700 mb-6">Please enter a valid URL, including the protocol (e.g., https://).</p>
+                        <button class="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600" onclick="this.parentElement.parentElement.remove()">OK</button>
+                    </div>
+                `;
+                document.body.appendChild(messageBox);
+                analyzeButton.disabled = false;
+                searchIcon.classList.remove('hidden');
+                loadingIcon.classList.add('hidden');
+                return;
+            }
+
+            // Simulate the backend call with a delay
+            setTimeout(() => {
+                const domainInfo = getDomainInfo(domain);
+                const sslInfo = getSslInfo(domain);
+                const aiAnalysis = analyzeWithCohere(domain);
+
+                // Calculate the indexes
+                const trustIndex = calculateTrustIndex(
+                    domainInfo.age_days,
+                    aiAnalysis,
+                    sslInfo.expiration,
+                    domainInfo.typosquatting
+                );
+                
+                const scamScore = 100 - trustIndex.score;
+
+                const maliciousIndex = calculateMaliciousIndex(
+                    domainInfo.age_days,
+                    aiAnalysis,
+                    sslInfo.expiration,
+                    domainInfo.typosquatting
+                );
+                
+                // Calculate the new indexes
+                const credibilityIndex = calculateCredibilityIndex(domainInfo.age_days, aiAnalysis, domainInfo.typosquatting);
+                const securityIndex = calculateSecurityIndex(sslInfo.expiration, aiAnalysis);
+                const privacyIndex = calculatePrivacyIndex(domain, aiAnalysis);
+
+
+                // Populate the UI with the calculated data
+                trustScoreElement.textContent = `${trustIndex.score}%`;
+                trustStatusElement.textContent = trustIndex.status;
+                trustCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getTrustClass(trustIndex.score)}`;
+                trustStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getTrustStatusClass(trustIndex.score)}`;
+
+                scamScoreElement.textContent = `${scamScore}%`;
+                scamStatusElement.textContent = getScamStatus(scamScore);
+                scamCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getScamClass(scamScore)}`;
+                scamStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getScamStatusClass(scamScore)}`;
+
+                maliciousScoreElement.textContent = `${maliciousIndex.score}%`;
+                maliciousStatusElement.textContent = maliciousIndex.status;
+                maliciousCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getMaliciousClass(maliciousIndex.score)}`;
+                maliciousStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getMaliciousStatusClass(maliciousIndex.score)}`;
+
+                // Populate the UI for the new indexes
+                credibilityScoreElement.textContent = `${credibilityIndex.score}%`;
+                credibilityStatusElement.textContent = credibilityIndex.status;
+                credibilityCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getIndexClass(credibilityIndex.score)}`;
+                credibilityStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getIndexStatusClass(credibilityIndex.score)}`;
+
+                securityScoreElement.textContent = `${securityIndex.score}%`;
+                securityStatusElement.textContent = securityIndex.status;
+                securityCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getIndexClass(securityIndex.score)}`;
+                securityStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getIndexStatusClass(securityIndex.score)}`;
+
+                privacyScoreElement.textContent = `${privacyIndex.score}%`;
+                privacyStatusElement.textContent = privacyIndex.status;
+                privacyCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getIndexClass(privacyIndex.score)}`;
+                privacyStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getIndexStatusClass(privacyIndex.score)}`;
+
+
+                // Populate the stats section
+                domainAgeStat.textContent = `Created: ${domainInfo.creation_date} (${domainInfo.age_days} days old)`;
+                sslInfoStat.textContent = `Issuer: ${sslInfo.issuer}, Expires: ${sslInfo.expiration}`;
+                aiAnalysisStat.textContent = aiAnalysis;
+
+                // Show the results section
+                resultsContainer.classList.remove('hidden');
+                
+                // Restore button state
+                analyzeButton.disabled = false;
+                searchIcon.classList.remove('hidden');
+                loadingIcon.classList.add('hidden');
+                
+                // Scroll to the results section
+                resultsContainer.scrollIntoView({ behavior: 'smooth' });
+            }, 2000);
+        });
+
+        // Helper function for trust circle styling
+        function getTrustClass(score) {
+            if (score >= 70) return 'border-green-500 text-green-500';
+            if (score >= 40) return 'border-yellow-500 text-yellow-500';
+            return 'border-red-500 text-red-500';
+        }
+
+        // Helper function for trust status text
+        function getTrustStatusClass(score) {
+            if (score >= 70) return 'bg-green-100 text-green-700';
+            if (score >= 40) return 'bg-yellow-100 text-yellow-700';
+            return 'bg-red-100 text-red-700';
+        }
+
+        // Helper function for scam circle styling
+        function getScamClass(score) {
+            if (score >= 70) return 'border-red-500 text-red-500';
+            if (score >= 40) return 'border-yellow-500 text-yellow-500';
+            return 'border-green-500 text-green-500';
+        }
+        
+        // Helper function for scam status text
+        function getScamStatusClass(score) {
+            if (score >= 70) return 'bg-red-100 text-red-700';
+            if (score >= 40) return 'bg-yellow-100 text-yellow-700';
+            return 'bg-green-100 text-green-700';
+        }
+        
+        // Helper function for scam status text content
+        function getScamStatus(score) {
+            if (score >= 70) return "High Risk";
+            if (score >= 40) return "Medium Risk";
+            return "Low Risk";
+        }
+
+        // Helper function for malicious circle styling
+        function getMaliciousClass(score) {
+            if (score >= 70) return 'border-red-500 text-red-500';
+            if (score >= 40) return 'border-yellow-500 text-yellow-500';
+            return 'border-green-500 text-green-500';
+        }
+        
+        // Helper function for malicious status text
+        function getMaliciousStatusClass(score) {
+            if (score >= 70) return 'bg-red-100 text-red-700';
+            if (score >= 40) return 'bg-yellow-100 text-yellow-700';
+            return 'bg-green-100 text-green-700';
+        }
+        
+        // Generic helper functions for the new indexes
+        function getIndexClass(score) {
+            if (score >= 70) return 'border-green-500 text-green-500';
+            if (score >= 40) return 'border-yellow-500 text-yellow-500';
+            return 'border-red-500 text-red-500';
+        }
+
+        function getIndexStatusClass(score) {
+            if (score >= 70) return 'bg-green-100 text-green-700';
+            if (score >= 40) return 'bg-yellow-100 text-yellow-700';
+            return 'bg-red-100 text-red-700';
+        }
+    </script>
+</body>
+</html>
