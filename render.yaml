@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: scam-detector
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    # IMPORTANT: Replace the Cohere API key with an environment variable
+    # This prevents the key from being exposed publicly
+    envVars:
+      - key: V4FQNrkjYNAYFWUuC4ZsITKuFzdeksOl7EKif9xg
+        sync: false

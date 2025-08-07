@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request, jsonify
 import requests
 import cohere
@@ -10,12 +9,12 @@ import ssl
 import socket
 import random
 from bs4 import BeautifulSoup
+import os
 
 app = Flask(__name__)
 
-# Initialize Cohere client
-# IMPORTANT: Replace 'YOUR_COHERE_API_KEY_HERE' with your actual API key
-co = cohere.Client('V4FQNrkjYNAYFWUuC4ZsITKuFzdeksOl7EKif9xg')
+
+co = cohere.Client(os.getenv('COHERE_API_KEY'))
 
 def is_valid_url(url):
     try:
@@ -81,10 +80,10 @@ def check_https(url):
         return f"HTTPS Error: {str(e)}", "warning"
 
 def get_blacklist_status(domain):
-    """Simulated blacklist check (in a real app, use API like Google Safe Browsing)"""
+    """Simulated blacklist check (in a real app, use API like Google Safe Browse)"""
     # For demo purposes, we'll simulate results
     # In production, you'd use an API like:
-    # https://developers.google.com/safe-browsing
+    # https://developers.google.com/safe-Browse
     
     # Simulated results - 5% chance of being blacklisted
     if random.random() < 0.05:
@@ -98,11 +97,7 @@ def get_blacklist_status(domain):
 
 def get_proximity_score(domain):
     """Simulated proximity to suspicious websites (in a real app, use threat intelligence API)"""
-    # For demo purposes, we'll generate a random score
-    # In production, you'd use an API like:
-    # https://www.phishtank.com/developer_info.php
     
-    # Generate a random score between 0-100
     score = random.randint(0, 100)
     
     # Determine status
