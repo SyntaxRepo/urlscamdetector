@@ -281,6 +281,3 @@ def check_url():
         return jsonify({'error': f'Failed to fetch URL: {str(e)}'}), 400
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
