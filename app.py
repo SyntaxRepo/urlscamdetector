@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request, jsonify
 import requests
 import cohere
@@ -10,14 +9,12 @@ import ssl
 import socket
 import random
 from bs4 import BeautifulSoup
-import os
 
 app = Flask(__name__)
 
 # Initialize Cohere client
-# Get API key from environment variable for security
-COHERE_API_KEY = os.getenv('COHERE_API_KEY')
-co = cohere.Client(api_key=COHERE_API_KEY)
+# IMPORTANT: Replace 'YOUR_COHERE_API_KEY_HERE' with your actual API key
+co = cohere.Client('')
 
 def is_valid_url(url):
     try:
@@ -38,6 +35,7 @@ def get_domain_info(domain):
         
         # Format creation date nicely
         if creation_date:
+            # Format with ordinal suffix (1st, 2nd, 3rd, etc.)
             day = creation_date.day
             if 4 <= day <= 20 or 24 <= day <= 30:
                 suffix = "th"
@@ -63,12 +61,16 @@ def get_domain_info(domain):
 
 def check_https(url):
     try:
+        # Extract domain from URL
         domain = urlparse(url).netloc
         
+        # Create a socket connection
         context = ssl.create_default_context()
         with socket.create_connection((domain, 443)) as sock:
             with context.wrap_socket(sock, server_hostname=domain) as ssock:
                 cert = ssock.getpeercert()
+                
+                # Check if certificate is valid
                 ssl.match_hostname(cert, domain)
                 
                 return "Valid HTTPS Found", "success"
@@ -78,17 +80,31 @@ def check_https(url):
         return f"HTTPS Error: {str(e)}", "warning"
 
 def get_blacklist_status(domain):
-    """Simulated blacklist check"""
+    """Simulated blacklist check (in a real app, use API like Google Safe Browsing)"""
+    # For demo purposes, we'll simulate results
+    # In production, you'd use an API like:
+    # https://developers.google.com/safe-browsing
+    
+    # Simulated results - 5% chance of being blacklisted
     if random.random() < 0.05:
         return "Detected by multiple engines", "danger"
+    
+    # 10% chance of being suspicious
     if random.random() < 0.1:
         return "Suspicious activity detected", "warning"
+    
     return "Not detected by any blacklist engine", "success"
 
 def get_proximity_score(domain):
-    """Simulated proximity to suspicious websites"""
+    """Simulated proximity to suspicious websites (in a real app, use threat intelligence API)"""
+    # For demo purposes, we'll generate a random score
+    # In production, you'd use an API like:
+    # https://www.phishtank.com/developer_info.php
+    
+    # Generate a random score between 0-100
     score = random.randint(0, 100)
     
+    # Determine status
     if score > 70:
         status = "danger"
     elif score > 40:
@@ -99,11 +115,6 @@ def get_proximity_score(domain):
     return score, status
 
 def analyze_with_cohere(text):
-    if not COHERE_API_KEY:
-        error_message = "Cohere API key not found. Please set the COHERE_API_KEY environment variable."
-        print(error_message)
-        return f"Error: {error_message}"
-    
     try:
         response = co.generate(
             model='command',
@@ -120,11 +131,7 @@ def analyze_with_cohere(text):
             return_likelihoods='NONE'
         )
         return response.generations[0].text
-    except cohere.core.api_error.ApiError as e:
-        print(f"Cohere API Error: {e}")
-        return f"Cohere API Error: {str(e)}"
     except Exception as e:
-        print(f"Error analyzing with Cohere: {str(e)}")
         return f"Error analyzing with Cohere: {str(e)}"
 
 def calculate_trust_index(domain_age, content, cohere_analysis, https_status, blacklist_status, proximity_score):
@@ -132,11 +139,13 @@ def calculate_trust_index(domain_age, content, cohere_analysis, https_status, bl
     trust_score = 100
     reasons = []
     
-    if domain_age < 365:
-        penalty = min(20, (365 - domain_age) / 18.25)
+    # Domain age penalty (max 20 points)
+    if domain_age < 365:  # Less than 1 year
+        penalty = min(20, (365 - domain_age) / 18.25)  # 365/20 = 18.25
         trust_score -= penalty
         reasons.append(f"New domain ({domain_age} days old): -{penalty:.1f}% trust")
     
+    # Common scam words penalty (max 15 points)
     scam_words = ['win', 'free', 'urgent', 'limited', 'offer', 'prize', 'congratulations', 'lottery', 'selected']
     word_count = sum(content.lower().count(word) for word in scam_words)
     if word_count > 0:
@@ -144,6 +153,7 @@ def calculate_trust_index(domain_age, content, cohere_analysis, https_status, bl
         trust_score -= penalty
         reasons.append(f"Suspicious keywords detected: -{penalty:.1f}% trust")
     
+    # Cohere analysis penalty (max 30 points)
     negative_phrases = ['likely scam', 'suspicious', 'fraudulent', 'high risk', 'be cautious', 'phishing']
     positive_phrases = ['likely legitimate', 'appears safe', 'low risk', 'trustworthy']
     
@@ -155,6 +165,7 @@ def calculate_trust_index(domain_age, content, cohere_analysis, https_status, bl
         trust_score -= ai_penalty
         reasons.append(f"AI detected red flags: -{ai_penalty:.1f}% trust")
     
+    # HTTPS bonus/penalty
     if "valid" in https_status.lower():
         trust_score += 5
         reasons.append(f"Valid HTTPS: +5% trust")
@@ -162,17 +173,21 @@ def calculate_trust_index(domain_age, content, cohere_analysis, https_status, bl
         trust_score -= 15
         reasons.append(f"Invalid HTTPS: -15% trust")
     
+    # Blacklist penalty
     if "detected" in blacklist_status.lower() or "suspicious" in blacklist_status.lower():
         penalty = 30 if "multiple" in blacklist_status.lower() else 15
         trust_score -= penalty
         reasons.append(f"Blacklist status: -{penalty}% trust")
     
+    # Proximity penalty
     proximity_penalty = proximity_score * 0.3
     trust_score -= proximity_penalty
     reasons.append(f"Proximity to suspicious sites: -{proximity_penalty:.1f}% trust")
     
+    # Ensure score is between 0-100
     trust_score = max(0, min(100, trust_score))
     
+    # Determine status based on score
     if trust_score > 70:
         status = "High Trust"
         status_class = "success"
@@ -208,30 +223,35 @@ def check_url():
         return jsonify({'error': 'Invalid URL format'}), 400
     
     try:
+        # Get website content
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         
+        # Extract text content using BeautifulSoup
         soup = BeautifulSoup(response.text, 'html.parser')
         text_content = soup.get_text()
-        text_content = ' '.join(text_content.split()[:2000])
+        text_content = ' '.join(text_content.split()[:2000])  # Limit to first 2000 words
         
+        # Get domain info
         domain = urlparse(url).netloc
         domain_info = get_domain_info(domain)
         
+        # Get HTTPS status
         https_status, https_class = check_https(url)
         
+        # Get blacklist status
         blacklist_status, blacklist_class = get_blacklist_status(domain)
         
+        # Get proximity score
         proximity_score, proximity_class = get_proximity_score(domain)
         
+        # Analyze with Cohere
         analysis = analyze_with_cohere(text_content)
         
-        if analysis.startswith("Error: Cohere API key not found") or analysis.startswith("Cohere API Error"):
-            return jsonify({'error': analysis}), 500
-        
+        # Calculate trust index
         trust_index = calculate_trust_index(
             domain_info['age_days'], 
             text_content, 
@@ -265,3 +285,6 @@ def check_url():
         return jsonify({'error': f'Failed to fetch URL: {str(e)}'}), 400
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
