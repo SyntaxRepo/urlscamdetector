@@ -13,10 +13,7 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-# Initialize Cohere client
-# IMPORTANT: Replace 'YOUR_COHERE_API_KEY_HERE' with your actual API key
 COHERE_API_KEY = os.getenv('COHERE_API_KEY')
-co = cohere.Client('')
 
 def is_valid_url(url):
     try:
