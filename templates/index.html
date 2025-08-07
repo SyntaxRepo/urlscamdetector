@@ -357,375 +357,37 @@
         const privacyStatusElement = document.getElementById('privacy-status');
         const privacyCircleElement = document.getElementById('privacy-circle');
 
-
         // Elements for the stats section
         const domainAgeStat = document.getElementById('domain-age-stat');
         const sslInfoStat = document.getElementById('ssl-info-stat');
         const aiAnalysisStat = document.getElementById('ai-analysis-stat');
 
-        // Simulates getting domain WHOIS information, now with typosquatting detection
-        function getDomainInfo(domain) {
-            const now = new Date();
-            const options = { year: 'numeric', month: 'long', day: 'numeric' };
-
-            // List of well-known, established domains, now with updated mediafire data
-            const establishedDomains = {
-                'google.com': new Date('1998-09-15'),
-                'apple.com': new Date('1987-02-19'),
-                'microsoft.com': new Date('1991-05-02'),
-                'wikipedia.org': new Date('2001-01-13'),
-                'github.com': new Date('2007-10-10'),
-                'amazon.com': new Date('1994-11-01'),
-                'openai.com': new Date('2015-12-04'),
-                'mediafire.com': new Date('2002-08-11'),
-                'facebook.com': new Date('2004-02-04'),
-                'youtube.com': new Date('2005-02-14'),
-                'x.com': new Date('1999-07-14')
-            };
-
-            // Function to check for typosquatting (simple Levenshtein distance)
-            function isTyposquatting(input, target) {
-                const d = Array(target.length + 1).fill(null).map(() => Array(input.length + 1).fill(null));
-                for (let i = 0; i <= input.length; i += 1) d[0][i] = i;
-                for (let j = 0; j <= target.length; j += 1) d[j][0] = j;
-
-                for (let j = 1; j <= target.length; j += 1) {
-                    for (let i = 1; i <= input.length; i += 1) {
-                        const cost = target[j - 1] === input[i - 1] ? 0 : 1;
-                        d[j][i] = Math.min(d[j - 1][i] + 1, d[j][i - 1] + 1, d[j - 1][i - 1] + cost);
-                    }
-                }
-                return d[target.length][input.length] <= 2;
-            }
-            
-            let isTypo = false;
-            for (const trustedDomain in establishedDomains) {
-                if (isTyposquatting(domain, trustedDomain)) {
-                    isTypo = true;
-                    break;
-                }
-            }
-            
-            // Check if the domain is a known established domain
-            for (const establishedDomain in establishedDomains) {
-                if (domain.includes(establishedDomain)) {
-                    const creationDate = establishedDomains[establishedDomain];
-                    const ageDays = Math.floor((now - creationDate) / (1000 * 60 * 60 * 24));
-                    return {
-                        creation_date: creationDate.toLocaleDateString('en-US', options),
-                        age_days: ageDays,
-                        typosquatting: false
-                    };
-                }
-            }
-            
-            // Check for suspicious URL patterns (e.g., long, random, or with numbers/hyphens)
-            const suspiciousKeywords = ['login', 'verify', 'payment', 'update', 'security', 'free-money'];
-            const hasSuspiciousChars = /[0-9-]/.test(domain);
-            const isSuspicious = domain.length > 30 || suspiciousKeywords.some(keyword => domain.includes(keyword)) || hasSuspiciousChars;
-
-            if (isSuspicious || isTypo) {
-                // Simulate a very new domain for suspicious-looking URLs
-                const randomDays = Math.floor(Math.random() * 30) + 1; // 1 to 30 days
-                const creationDate = new Date(now);
-                creationDate.setDate(now.getDate() - randomDays);
-                return {
-                    creation_date: creationDate.toLocaleDateString('en-US', options),
-                    age_days: randomDays,
-                    typosquatting: isTypo
-                };
-            }
-            
-            // For all other domains, simulate a plausible but non-suspicious date
-            const randomDays = Math.floor(Math.random() * 730) + 365; // 1 to 3 years old
-            const creationDate = new Date(now);
-            creationDate.setDate(now.getDate() - randomDays);
-
-            return {
-                creation_date: creationDate.toLocaleDateString('en-US', options),
-                age_days: randomDays,
-                typosquatting: false
-            };
+        // Helper functions for updating the UI
+        function updateScore(element, score) {
+            element.textContent = `${score}%`;
         }
 
-        // Simulates getting SSL certificate info
-        function getSslInfo(domain) {
-            const options = { year: 'numeric', month: 'long', day: 'numeric' };
-            const sslInfo = {
-                'mediafire.com': {
-                    expiration: new Date('2025-08-30'),
-                    issuer: 'Sectigo Limited'
-                },
-                'google.com': {
-                    expiration: new Date('2025-09-15'),
-                    issuer: 'Google Trust Services LLC'
-                }
-            };
-
-            const info = sslInfo[domain];
-
-            // If not in our list, simulate data
-            if (!info) {
-                const now = new Date();
-                const isSuspicious = domain.includes('shady-site') || domain.includes('phishing') || domain.includes('typosquatting');
-                if (isSuspicious) {
-                    // Simulate an expired or invalid cert
-                    const expirationDate = new Date(now);
-                    expirationDate.setDate(now.getDate() - 5); // 5 days in the past
-                    return {
-                        expiration: expirationDate.toLocaleDateString('en-US', options),
-                        issuer: 'Self-Signed or Unknown'
-                    };
-                } else {
-                    // Simulate a valid cert expiring in the future
-                    const expirationDate = new Date(now);
-                    expirationDate.setDate(now.getDate() + 365); // 1 year in the future
-                    return {
-                        expiration: expirationDate.toLocaleDateString('en-US', options),
-                        issuer: 'Simulated Issuer'
-                    };
-                }
-            }
-
-            return {
-                expiration: info.expiration.toLocaleDateString('en-US', options),
-                issuer: info.issuer
-            };
+        function updateCircleAndStatus(circleElement, statusElement, score, statusText, colorClass) {
+            circleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${colorClass}`;
+            statusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${colorClass.replace('border-', 'bg-').replace('text-', 'text-')}`;
+            statusElement.textContent = statusText;
         }
 
-        // Simulates AI analysis based on the domain with more red flags
-        function analyzeWithCohere(domain) {
-            const trustedDomains = ['google.com', 'apple.com', 'microsoft.com', 'wikipedia.org', 'github.com', 'openai.com', 'mediafire.com', 'facebook.com', 'youtube.com', 'x.com'];
-            const isTrusted = trustedDomains.some(d => domain.includes(d));
-            
-            if (isTrusted) {
-                return 'This website appears to be highly trustworthy. It has a long history and no signs of being blacklisted. You can browse with confidence.';
-            } else {
-                const redFlags = [];
-                if (domain.includes('login') || domain.includes('verify')) {
-                    redFlags.push('AI analysis has flagged the site as a potential phishing page based on its URL structure.');
-                }
-                if (domain.includes('shady-site') || domain.includes('malware')) {
-                    redFlags.push('The domain name itself is a major red flag, indicating a malicious intent.');
-                }
-                if (domain.length > 30) {
-                    redFlags.push('The unusually long domain name is often used to mask malicious intent.');
-                }
-                if (domain.includes('free-money')) {
-                    redFlags.push('The domain name contains classic scam keywords, indicating a high probability of fraud.');
-                }
-
-                if (redFlags.length > 0) {
-                    return redFlags.join(' ');
-                } else {
-                    return 'This website exhibits several risk factors, though no specific red flags were immediately identified by the AI. Proceed with caution.';
-                }
-            }
+        function getScoreClass(score) {
+            if (score >= 70) return 'border-green-500 text-green-500';
+            if (score >= 40) return 'border-yellow-500 text-yellow-500';
+            return 'border-red-500 text-red-500';
         }
 
-
-        // The core logic to calculate the final trust index, now with more granular and random penalties
-        function calculateTrustIndex(domainAge, analysis, sslExpiration, isTyposquatting) {
-            let trustScore = 100;
-            
-            // Generate a random penalty within a range for each condition
-            const getRandomPenalty = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-            
-            // Domain age penalty
-            if (domainAge < 30) {
-                const penalty = getRandomPenalty(15, 25); // Penalty between 15-25 points
-                trustScore -= penalty;
-            } else if (domainAge < 90) {
-                const penalty = getRandomPenalty(10, 20); // Penalty between 10-20 points
-                trustScore -= penalty;
-            }
-            
-            // Typosquatting penalty
-            if (isTyposquatting) {
-                const penalty = getRandomPenalty(35, 45); // Penalty between 35-45 points
-                trustScore -= penalty;
-            }
-
-            // AI analysis penalties
-            if (analysis.includes('phishing page')) {
-                const penalty = getRandomPenalty(25, 35); // Penalty between 25-35 points
-                trustScore -= penalty;
-            } else if (analysis.includes('red flag') || analysis.includes('malicious intent')) {
-                const penalty = getRandomPenalty(15, 25); // Penalty between 15-25 points
-                trustScore -= penalty;
-            } else if (analysis.includes('classic scam keywords')) {
-                const penalty = getRandomPenalty(20, 30); // Penalty between 20-30 points
-                trustScore -= penalty;
-            }
-
-            // SSL certificate penalty
-            if (new Date(sslExpiration) < new Date()) {
-                const penalty = getRandomPenalty(20, 30); // Penalty between 20-30 points
-                trustScore -= penalty;
-            }
-            
-            // Ensure score is between 0-100
-            trustScore = Math.max(0, Math.min(100, trustScore));
-
-            let status;
-            let statusClass;
-            if (trustScore > 70) {
-                status = "High Trust";
-                statusClass = "success";
-            } else if (trustScore > 40) {
-                status = "Medium Trust";
-                statusClass = "warning";
-            } else {
-                status = "Low Trust";
-                statusClass = "danger";
-            }
-
-            return {
-                score: Math.round(trustScore),
-                status: status,
-                status_class: statusClass,
-            };
+        function getScoreStatus(score) {
+            if (score >= 70) return "Low Risk";
+            if (score >= 40) return "Medium Risk";
+            return "High Risk";
         }
-
-        // Function to calculate the malicious index
-        function calculateMaliciousIndex(domainAge, analysis, sslExpiration, isTyposquatting) {
-            let maliciousScore = 0;
-            
-            // Generate a random score within a range for each condition
-            const getRandomScore = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-            // Typosquatting is a major malicious indicator
-            if (isTyposquatting) {
-                maliciousScore += getRandomScore(40, 60);
-            }
-
-            // High penalty for AI flagging phishing
-            if (analysis.includes('phishing page')) {
-                maliciousScore += getRandomScore(30, 50);
-            } else if (analysis.includes('malicious intent')) {
-                maliciousScore += getRandomScore(20, 40);
-            }
-            
-            // SSL issues are a strong sign of malicious intent
-            if (new Date(sslExpiration) < new Date()) {
-                 maliciousScore += getRandomScore(15, 25);
-            }
-
-            // Low penalty for new domains, as not all are malicious
-            if (domainAge < 90) {
-                maliciousScore += getRandomScore(5, 15);
-            }
-
-            // Ensure score is between 0-100
-            maliciousScore = Math.max(0, Math.min(100, maliciousScore));
-
-            let status;
-            let statusClass;
-            if (maliciousScore > 70) {
-                status = "High Risk";
-                statusClass = "danger";
-            } else if (maliciousScore > 40) {
-                status = "Medium Risk";
-                statusClass = "warning";
-            } else {
-                status = "Low Risk";
-                statusClass = "success";
-            }
-
-            return {
-                score: Math.round(maliciousScore),
-                status: status,
-                status_class: statusClass,
-            };
-        }
-
-        // Function to calculate the credibility index
-        function calculateCredibilityIndex(domainAge, analysis, isTyposquatting) {
-            let credibilityScore = 100;
-            const getRandomPenalty = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-            // Domain age is a strong indicator of credibility
-            if (domainAge < 30) {
-                credibilityScore -= getRandomPenalty(30, 40);
-            } else if (domainAge < 365) {
-                credibilityScore -= getRandomPenalty(10, 20);
-            }
-
-            // Typosquatting is a major hit to credibility
-            if (isTyposquatting) {
-                credibilityScore -= getRandomPenalty(40, 50);
-            }
-
-            // AI analysis red flags also lower credibility
-            if (analysis.includes('phishing page') || analysis.includes('malicious intent')) {
-                credibilityScore -= getRandomPenalty(20, 30);
-            }
-            
-            credibilityScore = Math.max(0, Math.min(100, credibilityScore));
-
-            return {
-                score: Math.round(credibilityScore),
-                status: getIndexStatus(credibilityScore),
-            };
-        }
-
-        // Function to calculate the security index
-        function calculateSecurityIndex(sslExpiration, analysis) {
-            let securityScore = 100;
-            const getRandomPenalty = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-            
-            // Expired SSL is a major security flaw
-            if (new Date(sslExpiration) < new Date()) {
-                securityScore -= getRandomPenalty(50, 60);
-            }
-
-            // AI flagging security issues
-            if (analysis.includes('phishing page') || analysis.includes('malicious intent')) {
-                securityScore -= getRandomPenalty(20, 30);
-            }
-
-            securityScore = Math.max(0, Math.min(100, securityScore));
-
-            return {
-                score: Math.round(securityScore),
-                status: getIndexStatus(securityScore),
-            };
-        }
-
-        // Function to calculate the privacy index
-        function calculatePrivacyIndex(domain, analysis) {
-            let privacyScore = 100;
-            const getRandomPenalty = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-            // Keywords often associated with data collection/scams
-            const privacyKeywords = ['login', 'payment', 'profile', 'data'];
-            if (privacyKeywords.some(keyword => domain.includes(keyword))) {
-                privacyScore -= getRandomPenalty(10, 20);
-            }
-
-            // AI analysis flagging phishing or scams
-            if (analysis.includes('phishing page') || analysis.includes('classic scam keywords')) {
-                privacyScore -= getRandomPenalty(30, 40);
-            }
-
-            privacyScore = Math.max(0, Math.min(100, privacyScore));
-
-            return {
-                score: Math.round(privacyScore),
-                status: getIndexStatus(privacyScore),
-            };
-        }
-
-        // Helper function to get status text for a score
-        function getIndexStatus(score) {
-            if (score >= 70) return "High";
-            if (score >= 40) return "Medium";
-            return "Low";
-        }
-
-
+        
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const url = urlInput.value;
             
             // Show loading state
             analyzeButton.disabled = true;
@@ -733,98 +395,133 @@
             loadingIcon.classList.remove('hidden');
             resultsContainer.classList.add('hidden');
 
-            const url = urlInput.value.toLowerCase();
-            let domain;
             try {
-                domain = new URL(url).hostname;
-            } catch (error) {
-                // Use a custom modal or message box instead of alert()
-                const messageBox = document.createElement('div');
-                messageBox.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center';
-                messageBox.innerHTML = `
-                    <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-auto text-center">
-                        <h3 class="text-xl font-bold mb-4">Invalid URL</h3>
-                        <p class="text-gray-700 mb-6">Please enter a valid URL, including the protocol (e.g., https://).</p>
-                        <button class="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600" onclick="this.parentElement.parentElement.remove()">OK</button>
-                    </div>
-                `;
-                document.body.appendChild(messageBox);
-                analyzeButton.disabled = false;
-                searchIcon.classList.remove('hidden');
-                loadingIcon.classList.add('hidden');
-                return;
-            }
-
-            // Simulate the backend call with a delay
-            setTimeout(() => {
-                const domainInfo = getDomainInfo(domain);
-                const sslInfo = getSslInfo(domain);
-                const aiAnalysis = analyzeWithCohere(domain);
-
-                // Calculate the indexes
-                const trustIndex = calculateTrustIndex(
-                    domainInfo.age_days,
-                    aiAnalysis,
-                    sslInfo.expiration,
-                    domainInfo.typosquatting
-                );
+                // Fetch content from a dummy endpoint to avoid CORS issues in the canvas environment
+                const fetchUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                const response = await fetch(fetchUrl);
+                const htmlContent = await response.text();
+                const contentSample = htmlContent.slice(0, 2000); // Get a sample of the HTML
                 
-                const scamScore = 100 - trustIndex.score;
+                // Construct the prompt for the Gemini API
+                const prompt = `Analyze the following website content for potential scam indicators. Give a single JSON response with the following structure:
+                {
+                    "trust_index": 0-100,
+                    "scam_index": 0-100,
+                    "malicious_index": 0-100,
+                    "credibility_index": 0-100,
+                    "security_index": 0-100,
+                    "privacy_index": 0-100,
+                    "domain_age_days": 1-10000,
+                    "ssl_info": "Valid SSL Certificate" or "No SSL Certificate",
+                    "ai_analysis": "string summary of the analysis"
+                }
 
-                const maliciousIndex = calculateMaliciousIndex(
-                    domainInfo.age_days,
-                    aiAnalysis,
-                    sslInfo.expiration,
-                    domainInfo.typosquatting
-                );
+                Website URL: ${url}
+                Content Sample: ${contentSample}`;
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                 
-                // Calculate the new indexes
-                const credibilityIndex = calculateCredibilityIndex(domainInfo.age_days, aiAnalysis, domainInfo.typosquatting);
-                const securityIndex = calculateSecurityIndex(sslInfo.expiration, aiAnalysis);
-                const privacyIndex = calculatePrivacyIndex(domain, aiAnalysis);
+                // Using a try/catch with exponential backoff for API call
+                let apiResponse;
+                let retries = 0;
+                while (retries < 3) {
+                    try {
+                        const payload = { 
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: {
+                                responseMimeType: "application/json",
+                                responseSchema: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        "trust_index": { "type": "NUMBER" },
+                                        "scam_index": { "type": "NUMBER" },
+                                        "malicious_index": { "type": "NUMBER" },
+                                        "credibility_index": { "type": "NUMBER" },
+                                        "security_index": { "type": "NUMBER" },
+                                        "privacy_index": { "type": "NUMBER" },
+                                        "domain_age_days": { "type": "NUMBER" },
+                                        "ssl_info": { "type": "STRING" },
+                                        "ai_analysis": { "type": "STRING" }
+                                    }
+                                }
+                            }
+                        };
+                        
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        if (!response.ok) throw new Error('API request failed');
 
+                        const result = await response.json();
+                        apiResponse = JSON.parse(result.candidates[0].content.parts[0].text);
+                        break; // Success, exit the loop
+                    } catch (e) {
+                        retries++;
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
+                        console.error(`Attempt ${retries} failed: ${e}`);
+                    }
+                }
+                
+                if (!apiResponse) {
+                    throw new Error('Failed to get a response from the API after multiple retries.');
+                }
+                
+                // Update the UI with the data from the API
+                const data = apiResponse;
 
-                // Populate the UI with the calculated data
-                trustScoreElement.textContent = `${trustIndex.score}%`;
-                trustStatusElement.textContent = trustIndex.status;
-                trustCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getTrustClass(trustIndex.score)}`;
-                trustStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getTrustStatusClass(trustIndex.score)}`;
+                // Trust Index
+                const trustClass = getScoreClass(data.trust_index);
+                const trustStatusText = getScoreStatus(data.trust_index);
+                updateScore(trustScoreElement, data.trust_index);
+                updateCircleAndStatus(trustCircleElement, trustStatusElement, data.trust_index, trustStatusText, trustClass);
 
-                scamScoreElement.textContent = `${scamScore}%`;
-                scamStatusElement.textContent = getScamStatus(scamScore);
-                scamCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getScamClass(scamScore)}`;
-                scamStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getScamStatusClass(scamScore)}`;
+                // Scam Index
+                const scamClass = getScoreClass(data.scam_index);
+                const scamStatusText = getScoreStatus(data.scam_index);
+                updateScore(scamScoreElement, data.scam_index);
+                updateCircleAndStatus(scamCircleElement, scamStatusElement, data.scam_index, scamStatusText, scamClass);
 
-                maliciousScoreElement.textContent = `${maliciousIndex.score}%`;
-                maliciousStatusElement.textContent = maliciousIndex.status;
-                maliciousCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getMaliciousClass(maliciousIndex.score)}`;
-                maliciousStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getMaliciousStatusClass(maliciousIndex.score)}`;
+                // Malicious Index
+                const maliciousClass = getScoreClass(data.malicious_index);
+                const maliciousStatusText = getScoreStatus(data.malicious_index);
+                updateScore(maliciousScoreElement, data.malicious_index);
+                updateCircleAndStatus(maliciousCircleElement, maliciousStatusElement, data.malicious_index, maliciousStatusText, maliciousClass);
 
-                // Populate the UI for the new indexes
-                credibilityScoreElement.textContent = `${credibilityIndex.score}%`;
-                credibilityStatusElement.textContent = credibilityIndex.status;
-                credibilityCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getIndexClass(credibilityIndex.score)}`;
-                credibilityStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getIndexStatusClass(credibilityIndex.score)}`;
+                // Credibility Index
+                const credibilityClass = getScoreClass(data.credibility_index);
+                const credibilityStatusText = getScoreStatus(data.credibility_index);
+                updateScore(credibilityScoreElement, data.credibility_index);
+                updateCircleAndStatus(credibilityCircleElement, credibilityStatusElement, data.credibility_index, credibilityStatusText, credibilityClass);
 
-                securityScoreElement.textContent = `${securityIndex.score}%`;
-                securityStatusElement.textContent = securityIndex.status;
-                securityCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getIndexClass(securityIndex.score)}`;
-                securityStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getIndexStatusClass(securityIndex.score)}`;
+                // Security Index
+                const securityClass = getScoreClass(data.security_index);
+                const securityStatusText = getScoreStatus(data.security_index);
+                updateScore(securityScoreElement, data.security_index);
+                updateCircleAndStatus(securityCircleElement, securityStatusElement, data.security_index, securityStatusText, securityClass);
 
-                privacyScoreElement.textContent = `${privacyIndex.score}%`;
-                privacyStatusElement.textContent = privacyIndex.status;
-                privacyCircleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${getIndexClass(privacyIndex.score)}`;
-                privacyStatusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${getIndexStatusClass(privacyIndex.score)}`;
+                // Privacy Index
+                const privacyClass = getScoreClass(data.privacy_index);
+                const privacyStatusText = getScoreStatus(data.privacy_index);
+                updateScore(privacyScoreElement, data.privacy_index);
+                updateCircleAndStatus(privacyCircleElement, privacyStatusElement, data.privacy_index, privacyStatusText, privacyClass);
 
-
-                // Populate the stats section
-                domainAgeStat.textContent = `Created: ${domainInfo.creation_date} (${domainInfo.age_days} days old)`;
-                sslInfoStat.textContent = `Issuer: ${sslInfo.issuer}, Expires: ${sslInfo.expiration}`;
-                aiAnalysisStat.textContent = aiAnalysis;
-
+                // Stats Section
+                domainAgeStat.textContent = `Approximately ${data.domain_age_days} days old`;
+                sslInfoStat.textContent = data.ssl_info;
+                aiAnalysisStat.textContent = data.ai_analysis;
+                
                 // Show the results section
                 resultsContainer.classList.remove('hidden');
-                
+
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                // Handle error state in the UI
+                alert('Failed to analyze the website. Please check the URL and try again.');
+            } finally {
                 // Restore button state
                 analyzeButton.disabled = false;
                 searchIcon.classList.remove('hidden');
@@ -832,69 +529,31 @@
                 
                 // Scroll to the results section
                 resultsContainer.scrollIntoView({ behavior: 'smooth' });
-            }, 2000);
+                lucide.createIcons();
+            }
         });
 
-        // Helper function for trust circle styling
-        function getTrustClass(score) {
+        // Helper functions for updating the UI
+        function updateScore(element, score) {
+            element.textContent = `${score}%`;
+        }
+
+        function updateCircleAndStatus(circleElement, statusElement, score, statusText, colorClass) {
+            circleElement.className = `w-36 h-36 rounded-full flex items-center justify-center text-5xl font-bold border-4 transition-all duration-500 ${colorClass}`;
+            statusElement.className = `mt-4 px-4 py-1.5 rounded-full text-lg font-semibold transition-all duration-500 ${colorClass.replace('border-', 'bg-').replace('text-', 'text-')}`;
+            statusElement.textContent = statusText;
+        }
+
+        function getScoreClass(score) {
             if (score >= 70) return 'border-green-500 text-green-500';
             if (score >= 40) return 'border-yellow-500 text-yellow-500';
             return 'border-red-500 text-red-500';
         }
 
-        // Helper function for trust status text
-        function getTrustStatusClass(score) {
-            if (score >= 70) return 'bg-green-100 text-green-700';
-            if (score >= 40) return 'bg-yellow-100 text-yellow-700';
-            return 'bg-red-100 text-red-700';
-        }
-
-        // Helper function for scam circle styling
-        function getScamClass(score) {
-            if (score >= 70) return 'border-red-500 text-red-500';
-            if (score >= 40) return 'border-yellow-500 text-yellow-500';
-            return 'border-green-500 text-green-500';
-        }
-        
-        // Helper function for scam status text
-        function getScamStatusClass(score) {
-            if (score >= 70) return 'bg-red-100 text-red-700';
-            if (score >= 40) return 'bg-yellow-100 text-yellow-700';
-            return 'bg-green-100 text-green-700';
-        }
-        
-        // Helper function for scam status text content
-        function getScamStatus(score) {
-            if (score >= 70) return "High Risk";
+        function getScoreStatus(score) {
+            if (score >= 70) return "Low Risk";
             if (score >= 40) return "Medium Risk";
-            return "Low Risk";
-        }
-
-        // Helper function for malicious circle styling
-        function getMaliciousClass(score) {
-            if (score >= 70) return 'border-red-500 text-red-500';
-            if (score >= 40) return 'border-yellow-500 text-yellow-500';
-            return 'border-green-500 text-green-500';
-        }
-        
-        // Helper function for malicious status text
-        function getMaliciousStatusClass(score) {
-            if (score >= 70) return 'bg-red-100 text-red-700';
-            if (score >= 40) return 'bg-yellow-100 text-yellow-700';
-            return 'bg-green-100 text-green-700';
-        }
-        
-        // Generic helper functions for the new indexes
-        function getIndexClass(score) {
-            if (score >= 70) return 'border-green-500 text-green-500';
-            if (score >= 40) return 'border-yellow-500 text-yellow-500';
-            return 'border-red-500 text-red-500';
-        }
-
-        function getIndexStatusClass(score) {
-            if (score >= 70) return 'bg-green-100 text-green-700';
-            if (score >= 40) return 'bg-yellow-100 text-yellow-700';
-            return 'bg-red-100 text-red-700';
+            return "High Risk";
         }
     </script>
 </body>
